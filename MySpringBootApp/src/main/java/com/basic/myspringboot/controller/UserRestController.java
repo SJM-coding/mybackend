@@ -6,6 +6,7 @@ import com.basic.myspringboot.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,16 +26,25 @@ public class UserRestController {
 //        this.userRepository = userRepository;
 //    }
 
+    @GetMapping("/welcome")
+    public String welcome() {
+        return "Welcome this endpoint is not secure";
+    }
+
     @PostMapping
     public User create(@RequestBody User user) {
         return userRepository.save(user);
     }
 
     @GetMapping
+    //관리자(Admin) 권한이 있는 사용자만 목록조회를 할 수 있음
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public List<User> getUsers() {
         return userRepository.findAll();
     }
 
+    //일반사용자(User) 권한이 있는 사용자만 목록조회를 할 수 있음
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id){
         Optional<User> optionalUser = userRepository.findById(id);
@@ -49,16 +59,15 @@ public class UserRestController {
 //        return optionalUser.map(ResponseEntity::ok)
 //                .orElse(ResponseEntity.notFound().build());
     }
+
     @GetMapping("/email/{email}/")  //http://localhost:8080/api/users/id/100
     public User getUserByEmail(@PathVariable String email){
         Optional<User> optionalUser = userRepository.findByEmail(email);
-        User existUser =
-                optionalUser.orElseThrow(() -> new BusinessException("User Not Found",HttpStatus.NOT_FOUND));
+        User existUser = getExistUser(optionalUser);
         return existUser;
     }
 
-
-    @PatchMapping("/{id}") // 수정 , 업데이트 방법
+    @PatchMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetail) {
         User existUser = getExistUser(userRepository.findById(id));
         //setter method 호출
